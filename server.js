@@ -20,3 +20,261 @@ app.get('/style.css', (req, res) =>
 app.get('/game.js', (req, res) =>
   res.sendFile(__dirname + '/public/public/public/public/game.js')
 );
+const express = require('express');
+const http = require('http');
+const {WebSocketServer} = require('ws');
+const crypto = require('crypto');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({server, path: '/ws'});
+
+app.use(express.json());
+app.use('/three', express.static(path.join(__dirname, 'node_modules/three/build')));
+
+app.get('/', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public/public/index.html'))
+);
+app.get('/style.css', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public/public/public/style.css'))
+);
+app.get('/game.js', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public/public/public/public/game.js'))
+);
+
+const rooms = new Map();
+const tokens = new Map();
+const id = () => crypto.randomBytes(12).toString('hex');
+
+const guns = [
+  {max: 6, damage: 20, range: 45, interval: 700},
+  {max: 30, damage: 10, range: 25, interval: 110},
+  {max: 2, damage: 50, range: 10, interval: 650}
+];
+
+app.post('/api/session', (req, res) => {
+  let {action, code, name, map} = req.body || {};
+  name = String(name || 'Pilot')
+    .replace(/[^\p{L}\p{N} _-]/gu, '')
+    .slice(0, 16) || 'Pilot';
+
+  let room;
+
+  if (action === 'create') {
+    code = crypto.randomBytes(3).toString('hex').toUpperCase();
+    room = {
+      code,
+      map: map === 'NEXUS' ? 'NEXUS' : 'OUTPOST',
+      players: new Map(),
+      scores: [0, 0],
+      end: Date.now() + 180000
+    };
+    rooms.set(code, room);
+  } else {
+    code = String(code || '').toUpperCase();
+    room = rooms.get(code);
+
+    if (!room) {
+      return res.status(404).json({error: 'Raum nicht gefunden.'});
+    }
+    if (room.players.size >= 8) {
+      return res.status(400).json({error: 'Der Raum ist voll.'});
+    }
+  }
+
+  let token = id();
+  tokens.set(token, {room, name, expires: Date.now() + 30000});
+  res.json({token, code, map: room.map});
+});
+
+function obstacles(map) {
+  return map === 'OUTPOST'
+    ? [
+        [-7,-8,3,6], [7,8,3,6], [-7,9,4,3], [7,-9,4,3],
+        [0,0,4,4], [-16,0,3,5], [16,0,3,5], [0,-17,6,2], [0,17,6,2]
+      ]
+    : [
+        [-10,-10,5,3], [10,10,5,3], [-10,10,3,5], [10,-10,3,5],
+        [0,-7,7,2], [0,7,7,2], [-4,0,2,4], [4,0,2,4]
+      ];
+}
+
+function clearPath(room, x, z, dx, dz, distance) {
+  for (let t = .2; t < distance; t += .25) {
+    if (obstacles(room.map).some(([a,b,w,d]) =>
+      Math.abs(x + dx*t - a) < w/2 &&
+      Math.abs(z + dz*t - b) < d/2
+    )) return false;
+  }
+  return true;
+}
+
+function spawn(p) {
+  p.x = p.team === 0 ? -12 : 12;
+  p.z = (Math.random() - .5) * 14;
+  p.hp = 100;
+  p.dead = false;
+  p.inv = Date.now() + 2000;
+  p.ammo = guns.map(g => g.max);
+}
+
+function broadcast(room, message) {
+  let text = JSON.stringify(message);
+  for (const p of room.players.values()) {
+    if (p.ws.readyState === 1) p.ws.send(text);
+  }
+}
+
+wss.on('connection', ws => {
+  let p, room;
+  let timer = setTimeout(() => ws.close(), 5000);
+
+  ws.on('message', raw => {
+    let m;
+    try { m = JSON.parse(raw); } catch { return; }
+
+    if (!p) {
+      let t = tokens.get(m.token);
+      tokens.delete(m.token);
+      if (m.type !== 'auth' || !t || t.expires < Date.now()) {
+        return ws.close();
+      }
+
+      clearTimeout(timer);
+      room = t.room;
+      let counts = [0, 0];
+      for (let q of room.players.values()) counts[q.team]++;
+
+      p = {
+        id: id().slice(0, 8),
+        name: t.name,
+        team: counts[0] <= counts[1] ? 0 : 1,
+        ws,
+        yaw: 0,
+        pitch: 0,
+        lastShot: 0
+      };
+
+      spawn(p);
+      room.players.set(p.id, p);
+
+      ws.send(JSON.stringify({
+        type: 'welcome',
+        id: p.id,
+        team: p.team,
+        code: room.code,
+        map: room.map
+      }));
+      return;
+    }
+
+    if (m.type === 'move' && !p.dead) {
+      let x = Number(m.x), z = Number(m.z);
+      let yaw = Number(m.yaw), pitch = Number(m.pitch);
+
+      if ([x, z, yaw, pitch].every(Number.isFinite)) {
+        let dx = x - p.x, dz = z - p.z;
+        let distance = Math.hypot(dx, dz);
+        let scale = Math.min(1, 1.5 / (distance || 1));
+        let nx = Math.max(-24, Math.min(24, p.x + dx*scale));
+        let nz = Math.max(-24, Math.min(24, p.z + dz*scale));
+
+        let blocked = obstacles(room.map).some(([a,b,w,d]) =>
+          Math.abs(nx-a) < w/2+.45 && Math.abs(nz-b) < d/2+.45
+        );
+
+        if (!blocked) { p.x = nx; p.z = nz; }
+        p.yaw = yaw;
+        p.pitch = Math.max(-1.4, Math.min(1.4, pitch));
+      }
+    }
+
+    let index = Number(m.weapon);
+    if (!Number.isInteger(index) || !guns[index]) return;
+    let gun = guns[index];
+
+    if (m.type === 'reload' && !p.dead) {
+      p.ammo[index] = gun.max;
+      ws.send(JSON.stringify({type:'ammo', weapon:index, ammo:p.ammo[index]}));
+    }
+
+    if (
+      m.type === 'fire' && !p.dead &&
+      Date.now() - p.lastShot >= gun.interval &&
+      p.ammo[index] > 0 && Date.now() < room.end
+    ) {
+      p.lastShot = Date.now();
+      p.ammo[index]--;
+
+      let dx = -Math.sin(p.yaw) * Math.cos(p.pitch);
+      let dz = -Math.cos(p.yaw) * Math.cos(p.pitch);
+      let dy = Math.sin(p.pitch);
+      let best = null, nearest = gun.range;
+
+      for (let q of room.players.values()) {
+        if (q === p || q.team === p.team || q.dead || Date.now() < q.inv) continue;
+
+        let vx = q.x - p.x, vz = q.z - p.z;
+        let along = vx*dx + vz*dz;
+        if (along < 0 || along > nearest) continue;
+
+        let offset = Math.hypot(vx-dx*along, vz-dz*along, dy*along);
+
+        if (offset < 1.1 && clearPath(room, p.x, p.z, dx, dz, along)) {
+          best = q;
+          nearest = along;
+        }
+      }
+
+      if (best) {
+        best.hp -= gun.damage;
+        ws.send(JSON.stringify({type:'hit'}));
+
+        if (best.hp <= 0) {
+          best.dead = true;
+          room.scores[p.team]++;
+          broadcast(room, {type:'feed', text:p.name+' → '+best.name});
+
+          setTimeout(() => {
+            if (room.players.has(best.id)) spawn(best);
+          }, 3000);
+        }
+      }
+
+      ws.send(JSON.stringify({type:'ammo', weapon:index, ammo:p.ammo[index]}));
+    }
+  });
+
+  ws.on('close', () => {
+    clearTimeout(timer);
+    if (!p) return;
+
+    room.players.delete(p.id);
+    if (!room.players.size) {
+      setTimeout(() => {
+        if (!room.players.size) rooms.delete(room.code);
+      }, 60000);
+    }
+  });
+});
+
+setInterval(() => {
+  for (let room of rooms.values()) {
+    if (!room.players.size) continue;
+
+    broadcast(room, {
+      type: 'state',
+      players: [...room.players.values()].map(
+        ({id,name,team,x,z,yaw,hp,dead,inv}) =>
+          ({id,name,team,x,z,yaw,hp,dead,inv})
+      ),
+      scores: room.scores,
+      time: Math.max(0, Math.ceil((room.end-Date.now())/1000))
+    });
+  }
+}, 100);
+
+server.listen(process.env.PORT || 3000, '0.0.0.0', () => {
+  console.log('Tactical Arena läuft');
+});
