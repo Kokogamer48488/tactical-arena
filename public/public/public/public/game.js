@@ -467,3 +467,137 @@ function begin() {
   showMessage('');
   clock.getDelta();
 }
+async function startOnline() {
+  try {
+    let resp = await fetch('/api/session', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        action: onlineAction,
+        code: $('code').value,
+        name: $('name').value,
+        map
+      })
+    });
+
+    let data = await resp.json();
+    if (!resp.ok) throw Error(data.error);
+
+    map = data.map;
+    socket = new WebSocket(
+      `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`
+    );
+
+    socket.onopen = () => {
+      socket.send(JSON.stringify({type: 'auth', token: data.token}));
+    };
+
+    socket.onmessage = ev => {
+      let m = JSON.parse(ev.data);
+
+      if (m.type === 'welcome') {
+        myId = m.id;
+        team = m.team;
+        reset();
+        buildWorld();
+        begin();
+
+        $('roomDisplay').textContent =
+          'RAUM: ' + m.code + ' · ' + (team === 0 ? 'BLAU' : 'ROT');
+
+        $('invite').dataset.code = m.code;
+      }
+
+      if (m.type === 'state') {
+        scores = m.scores;
+        remaining = m.time;
+
+        let self = m.players.find(p => p.id === myId);
+
+        if (self) {
+          health = Math.max(0, self.hp);
+
+          if (self.dead) {
+            deadUntil = performance.now() + 200;
+            showMessage('RESPAWN ...');
+          } else if (deadUntil) {
+            deadUntil = 0;
+            x = self.x;
+            z = self.z;
+            showMessage('');
+          }
+        }
+
+        let others = m.players.filter(p => p.id !== myId);
+
+        for (let p of others) {
+          let e = entities.find(e => e.id === p.id) ||
+            makeEntity(p.id, p.team, p.name);
+
+          e.mesh.visible = !p.dead;
+          e.mesh.position.set(p.x, 0, p.z);
+          e.mesh.rotation.y = p.yaw;
+        }
+
+        for (let e of [...entities]) {
+          if (!others.some(p => p.id === e.id)) {
+            scene.remove(e.mesh);
+            entities.splice(entities.indexOf(e), 1);
+          }
+        }
+
+        if (!remaining && !matchOver) {
+          matchOver = true;
+          showMessage(
+            'MATCH BEENDET · ' +
+            (scores[0] === scores[1]
+              ? 'UNENTSCHIEDEN'
+              : scores[0] > scores[1]
+                ? 'BLAU GEWINNT'
+                : 'ROT GEWINNT')
+          );
+        }
+
+        updateHUD();
+      }
+
+      if (m.type === 'ammo') {
+        ammo = m.ammo;
+        updateHUD();
+      }
+
+      if (m.type === 'hit') hit();
+      if (m.type === 'feed') feed(m.text);
+    };
+
+    socket.onclose = () => {
+      if (playing && mode === 'online') {
+        showMessage('VERBINDUNG GETRENNT');
+      }
+    };
+
+    socket.onerror = () => {
+      $('error').textContent = 'Verbindung zum Server fehlgeschlagen.';
+    };
+  } catch (e) {
+    $('error').textContent = e.message;
+  }
+}
+
+function stop() {
+  playing = false;
+  shooting = false;
+  keys = {};
+  joy = {x: 0, y: 0};
+
+  if (socket) {
+    socket.close();
+    socket = null;
+  }
+
+  if (document.pointerLockElement) document.exitPointerLock();
+
+  clearWorld();
+  $('hud').classList.add('hidden');
+  $('menu').classList.remove('hidden');
+}
