@@ -601,3 +601,169 @@ function stop() {
   $('hud').classList.add('hidden');
   $('menu').classList.remove('hidden');
 }
+function frame() {
+  requestAnimationFrame(frame);
+  if (!playing) return;
+
+  let dt = Math.min(clock.getDelta(), .05);
+  let now = performance.now();
+
+  if (mode !== 'online' && mode !== 'training' && !matchOver) {
+    remaining = Math.max(0, 180 - Math.floor((now - roundStart) / 1000));
+
+    if (!remaining) {
+      matchOver = true;
+      showMessage(
+        'MATCH BEENDET · ' +
+        (scores[0] === scores[1]
+          ? 'UNENTSCHIEDEN'
+          : scores[0] > scores[1]
+            ? 'BLAU GEWINNT'
+            : 'ROT GEWINNT')
+      );
+    }
+
+    updateHUD();
+  }
+
+  if (mode !== 'online' && deadUntil && now >= deadUntil) respawn();
+
+  if (!deadUntil && !matchOver) {
+    let forward =
+      (keys.KeyW || keys.ArrowUp ? 1 : 0) -
+      (keys.KeyS || keys.ArrowDown ? 1 : 0) -
+      joy.y;
+
+    let side =
+      (keys.KeyD || keys.ArrowRight ? 1 : 0) -
+      (keys.KeyA || keys.ArrowLeft ? 1 : 0) +
+      joy.x;
+
+    let len = Math.hypot(forward, side);
+
+    if (len > 1) {
+      forward /= len;
+      side /= len;
+    }
+
+    let speed = 6 * dt;
+
+    move(
+      (-Math.sin(yaw) * forward + Math.cos(yaw) * side) * speed,
+      (-Math.cos(yaw) * forward - Math.sin(yaw) * side) * speed
+    );
+
+    vy -= 15 * dt;
+    height += vy * dt;
+
+    if (height < 1.7) {
+      height = 1.7;
+      vy = 0;
+    }
+
+    if (shooting) shoot();
+  }
+
+  camera.position.set(x, height, z);
+  camera.rotation.set(pitch, yaw, 0);
+
+  if (mode !== 'online') {
+    bots(dt, now);
+  } else if (socket?.readyState === 1 && now - lastMove > 80) {
+    lastMove = now;
+    socket.send(JSON.stringify({type: 'move', x, z, yaw, pitch}));
+  }
+
+  for (let i = effects.length - 1; i >= 0; i--) {
+    if (now > effects[i].until) {
+      let e = effects.splice(i, 1)[0];
+      scene.remove(e.mesh);
+      e.mesh.geometry.dispose();
+      e.mesh.material.dispose();
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+requestAnimationFrame(frame);
+
+for (let b of document.querySelectorAll('.mode')) {
+  b.onclick = () => {
+    document.querySelectorAll('.mode').forEach(
+      x => x.classList.remove('selected')
+    );
+    b.classList.add('selected');
+    mode = b.dataset.mode;
+    $('onlineOptions').classList.toggle('hidden', mode !== 'online');
+  };
+}
+
+$('create').onclick = () => {
+  onlineAction = 'create';
+  $('create').classList.add('active');
+  $('join').classList.remove('active');
+  $('code').classList.add('hidden');
+};
+
+$('join').onclick = () => {
+  onlineAction = 'join';
+  $('join').classList.add('active');
+  $('create').classList.remove('active');
+  $('code').classList.remove('hidden');
+};
+
+$('start').onclick = () => {
+  $('error').textContent = '';
+  map = $('map').value;
+  mode === 'online' ? startOnline() : startLocal();
+};
+
+$('exit').onclick = stop;
+
+window.addEventListener('resize', () => {
+  if (renderer) {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (!playing) return;
+  keys[e.code] = true;
+
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    e.preventDefault();
+  }
+
+  if (e.code === 'KeyR') reload();
+  if (e.code === 'Digit1' || e.code === 'Digit2') switchWeapon();
+  if (e.code === 'Space' && height <= 1.71) vy = 6;
+  if (e.code === 'Escape' && matchOver) stop();
+});
+
+document.addEventListener('keyup', e => {
+  keys[e.code] = false;
+});
+
+document.addEventListener('mousemove', e => {
+  if (playing && document.pointerLockElement === renderer.domElement) {
+    yaw -= e.movementX * .0025;
+    pitch = Math.max(-1.4, Math.min(1.4, pitch - e.movementY * .0025));
+  }
+});
+
+document.addEventListener('mousedown', e => {
+  if (!playing || e.target.closest('button')) return;
+
+  if (document.pointerLockElement !== renderer.domElement) {
+    renderer.domElement.requestPointerLock?.();
+  } else if (e.button === 0) {
+    shooting = true;
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  shooting = false;
+});
