@@ -876,3 +876,50 @@ if (inviteCode && /^[a-f0-9]{6}$/i.test(inviteCode)) {
   $('join').click();
   $('code').value = inviteCode.toUpperCase();
 }
+function animateCharacters(time) {
+  requestAnimationFrame(animateCharacters);
+  if (!playing) return;
+
+  for (const character of entities) {
+    const model = character.mesh;
+    if (!model.visible) continue;
+
+    const current = model.position;
+
+    if (!character.lastAnimationPosition) {
+      character.lastAnimationPosition = current.clone();
+    }
+
+    const distance = current.distanceTo(character.lastAnimationPosition);
+    character.lastAnimationPosition.copy(current);
+
+    const moving = distance > 0.001;
+    const swing = moving ? Math.sin(time * 0.012) * 0.12 : 0;
+    const children = model.children;
+
+    // Arme und Beine bewegen sich gegengleich.
+    if (children.length >= 22) {
+      children[9].position.z = swing;
+      children[10].position.z = swing - .04;
+      children[11].position.z = swing - .04;
+
+      children[16].position.z = -swing;
+      children[17].position.z = -swing - .04;
+      children[18].position.z = -swing - .04;
+
+      children[12].position.z = -swing;
+      children[13].position.z = -swing;
+      children[14].position.z = -swing - .08;
+
+      children[19].position.z = swing;
+      children[20].position.z = swing;
+      children[21].position.z = swing - .08;
+    }
+
+    model.position.y = moving
+      ? Math.abs(Math.sin(time * 0.012)) * 0.035
+      : Math.sin(time * 0.002) * 0.008;
+  }
+}
+
+requestAnimationFrame(animateCharacters);
