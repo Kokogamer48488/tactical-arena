@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080d15">
+  <title>Tactical Arena</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="game"></div>
+<div id="menu" class="screen">
+  <div class="top">
+    <div class="brand"><span class="brandicon">◈</span> TACTICAL <b>ARENA</b></div>
+    <span class="topright"><i></i> SYSTEM ONLINE <em> / </em> V 1.0</span>
+  </div>
+  <main>
+    <div class="hero">
+      <div class="eyebrow"><span></span> NEXT-GEN TACTICAL EXPERIENCE</div>
+      <h1>ENTER THE<br><strong>ARENA<span>.</span></strong></h1>
+      <p>Dein Team. Deine Taktik. Deine Arena.<br>Bereit für die nächste Runde?</p>
+      <div class="herofoot">
+        <span>◉ &nbsp; TOUCH-OPTIMIERT</span>
+        <span>✦ &nbsp; FAIR PLAY</span>
+        <span>⌁ &nbsp; NO INSTALL</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panelhead">
+        <div><small>MISSION CONTROL</small><h2>Einsatz wählen</h2></div>
+        <span>01 / 03</span>
+      </div>
+      <div class="modes">
+        <button class="mode selected" data-mode="bots">
+          <span class="modeicon">⚔</span>
+          <span><b>Team Deathmatch</b><small>Mit Bots ins Gefecht</small></span><em>›</em>
+        </button>
+        <button class="mode" data-mode="training">
+          <span class="modeicon">◎</span>
+          <span><b>Training</b><small>Üben ohne Zeitdruck</small></span><em>›</em>
+        </button>
+        <button class="mode" data-mode="online">
+          <span class="modeicon">⌁</span>
+          <span><b>Online-Multiplayer</b><small>Privater Raum mit Code</small></span><em>›</em>
+        </button>
+      </div>
+      <div class="settings">
+        <label>SPIELERNAME<input id="name" maxlength="16" value="Pilot" autocomplete="off"></label>
+        <label>MAP<select id="map"><option value="OUTPOST">Outpost 07</option><option value="NEXUS">Nexus Core</option></select></label>
+      </div>
+      <div id="onlineOptions" class="hidden">
+        <div class="online-row">
+          <button id="create" class="choice active">RAUM ERSTELLEN</button>
+          <button id="join" class="choice">RAUM BEITRETEN</button>
+        </div>
+        <input id="code" class="hidden" placeholder="RAUMCODE EINGEBEN" maxlength="6" autocomplete="off">
+        <p class="hint">Teile den Raumcode mit deinen Mitspielern. Maximal 8 Spieler.</p>
+      </div>
+      <button id="start" class="primary">EINSATZ STARTEN <span>↗</span></button>
+      <div id="error"></div>
+      <div class="panelbottom"><span>◈ &nbsp; TACTICAL ARENA</span><span>READY FOR DEPLOYMENT</span></div>
+    </div>
+  </main>
+  <footer><span>© 2026 TACTICAL ARENA &nbsp; / &nbsp; TEST BUILD</span><span>MADE FOR THE ARENA &nbsp; ✳</span></footer>
+</div>
+
+<div id="hud" class="hidden">
+  <div class="hudtop">
+    <button id="exit" class="hudbtn">‹ <span>MENÜ</span></button>
+    <div class="score">
+      <b id="blueScore">0</b>
+      <span><small id="hudMode">TEAM DEATHMATCH</small><strong id="timer">03:00</strong></span>
+      <b id="redScore">0</b>
+    </div>
+    <div class="hudright">
+      <button id="invite" class="hudbtn hidden">EINLADUNG KOPIEREN</button>
+      <span id="roomDisplay"></span>
+      <span id="mapDisplay">OUTPOST 07</span>
+    </div>
+  </div>
+  <div id="feed"></div>
+  <div id="crosshair"><i></i><i></i><i></i><i></i><div></div></div>
+  <div id="hitmarker">×</div>
+  <div id="message"></div>
+  <div class="bottomhud">
+    <div class="health">
+      <small>VITALS</small><b>✚ <span id="hp">100</span></b>
+      <div><i id="hpbar"></i></div>
+    </div>
+    <div class="ammo">
+      <small id="weaponName">PULSE RIFLE</small>
+      <b><span id="ammo">60</span><em> / ∞</em></b>
+      <small id="weaponHint">1 / 2 WAFFE WECHSELN</small>
+    </div>
+  </div>
+  <div id="touchControls">
+    <div id="joystick"><div id="stick"></div></div>
+    <div id="lookZone"></div>
+    <button id="shoot" class="touchbtn">⌁<small>FEUER</small></button>
+    <button id="jump" class="touchbtn">↑<small>SPRUNG</small></button>
+    <button id="reload" class="touchbtn">↻<small>LADEN</small></button>
+    <button id="switch" class="touchbtn">⇄<small>WAFFE</small></button>
+  </div>
+  <div id="desktopTip">KLICK ZUM ZIELEN &nbsp; · &nbsp; WASD BEWEGEN &nbsp; · &nbsp; R NACHLADEN &nbsp; · &nbsp; LEERTASTE SPRINGEN</div>
+</div>
+<script type="module" src="/game.js"></script>
+</body>
+</html>
