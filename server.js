@@ -9,3 +9,14 @@ function broadcast(r,obj){let s=JSON.stringify(obj);for(const p of r.players.val
 wss.on('connection',(ws)=>{let p,r;let timer=setTimeout(()=>ws.close(),5000);ws.on('message',raw=>{let m;try{m=JSON.parse(raw)}catch{return}if(!p){let t=tokens.get(m.token);tokens.delete(m.token);if(m.type!=='auth'||!t||t.expires<Date.now())return ws.close();clearTimeout(timer);r=t.room;let counts=[0,0];for(let q of r.players.values())counts[q.team]++;p={id:id().slice(0,8),name:t.name,team:counts[0]<=counts[1]?0:1,ws,yaw:0,pitch:0,lastShot:0,ammo:60};spawn(p);r.players.set(p.id,p);ws.send(JSON.stringify({type:'welcome',id:p.id,team:p.team,code:r.code,map:r.map}));return}if(m.type==='move'&&!p.dead){let x=Number(m.x),z=Number(m.z),yaw=Number(m.yaw),pitch=Number(m.pitch);if([x,z,yaw,pitch].every(Number.isFinite)){let dx=x-p.x,dz=z-p.z,dist=Math.hypot(dx,dz),scale=Math.min(1,1.5/(dist||1));let nx=Math.max(-24,Math.min(24,p.x+dx*scale)),nz=Math.max(-24,Math.min(24,p.z+dz*scale));if(!obstacles(r.map).some(([a,b,w,d])=>Math.abs(nx-a)<w/2+.45&&Math.abs(nz-b)<d/2+.45)){p.x=nx;p.z=nz};p.yaw=yaw;p.pitch=Math.max(-1.4,Math.min(1.4,pitch))}}if(m.type==='reload'&&!p.dead){p.ammo=60;ws.send(JSON.stringify({type:'ammo',ammo:p.ammo}))}if(m.type==='fire'&&!p.dead&&Date.now()-p.lastShot>90&&p.ammo>0&&Date.now()<r.end){p.lastShot=Date.now();p.ammo--;let dx=-Math.sin(p.yaw)*Math.cos(p.pitch),dz=-Math.cos(p.yaw)*Math.cos(p.pitch),dy=Math.sin(p.pitch),best=null,bd=50;for(let q of r.players.values()){if(q===p||q.team===p.team||q.dead||Date.now()<q.inv)continue;let vx=q.x-p.x,vz=q.z-p.z,along=vx*dx+vz*dz;if(along<0||along>bd)continue;let off=Math.hypot(vx-dx*along,vz-dz*along,dy*along);if(off<1.1&&clearPath(r,p.x,p.z,dx,dz,along)){best=q;bd=along}}if(best){best.hp-=34;ws.send(JSON.stringify({type:'hit'}));if(best.hp<=0){best.dead=true;r.scores[p.team]++;broadcast(r,{type:'feed',text:p.name+' → '+best.name});setTimeout(()=>{if(r.players.has(best.id))spawn(best)},3000)}}ws.send(JSON.stringify({type:'ammo',ammo:p.ammo}))}});ws.on('close',()=>{clearTimeout(timer);if(p){r.players.delete(p.id);if(!r.players.size)setTimeout(()=>{if(!r.players.size)rooms.delete(r.code)},60000)}})});
 setInterval(()=>{for(let r of rooms.values()){if(!r.players.size)continue;broadcast(r,{type:'state',players:[...r.players.values()].map(({id,name,team,x,z,yaw,hp,dead,inv})=>({id,name,team,x,z,yaw,hp,dead,inv})),scores:r.scores,time:Math.max(0,Math.ceil((r.end-Date.now())/1000))})}},100);
 server.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Tactical Arena läuft auf Port '+(process.env.PORT||3000)));
+app.get('/', (req, res) =>
+  res.sendFile(__dirname + '/public/public/index.html')
+);
+
+app.get('/style.css', (req, res) =>
+  res.sendFile(__dirname + '/public/public/public/style.css')
+);
+
+app.get('/game.js', (req, res) =>
+  res.sendFile(__dirname + '/public/public/public/public/game.js')
+);
