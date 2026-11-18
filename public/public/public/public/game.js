@@ -767,3 +767,112 @@ document.addEventListener('mousedown', e => {
 document.addEventListener('mouseup', () => {
   shooting = false;
 });
+let joystick = $('joystick');
+
+function joystickMove(e) {
+  let r = joystick.getBoundingClientRect();
+  let dx = e.clientX - (r.left + r.width / 2);
+  let dy = e.clientY - (r.top + r.height / 2);
+  let len = Math.hypot(dx, dy);
+  let max = 35;
+
+  if (len > max) {
+    dx *= max / len;
+    dy *= max / len;
+  }
+
+  joy = {x: dx / max, y: dy / max};
+  $('stick').style.transform = `translate(${dx}px,${dy}px)`;
+}
+
+joystick.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  moveTouch = e.pointerId;
+  joystick.setPointerCapture(e.pointerId);
+  joystickMove(e);
+});
+
+joystick.addEventListener('pointermove', e => {
+  if (e.pointerId === moveTouch) joystickMove(e);
+});
+
+function joyEnd(e) {
+  if (e.pointerId === moveTouch) {
+    moveTouch = null;
+    joy = {x: 0, y: 0};
+    $('stick').style.transform = '';
+  }
+}
+
+joystick.addEventListener('pointerup', joyEnd);
+joystick.addEventListener('pointercancel', joyEnd);
+
+let look = $('lookZone');
+
+look.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  lookTouch = {id: e.pointerId, x: e.clientX, y: e.clientY};
+  look.setPointerCapture(e.pointerId);
+});
+
+look.addEventListener('pointermove', e => {
+  if (lookTouch?.id === e.pointerId) {
+    yaw -= (e.clientX - lookTouch.x) * .005;
+    pitch = Math.max(
+      -1.4,
+      Math.min(1.4, pitch - (e.clientY - lookTouch.y) * .005)
+    );
+
+    lookTouch.x = e.clientX;
+    lookTouch.y = e.clientY;
+  }
+});
+
+look.addEventListener('pointerup', () => lookTouch = null);
+look.addEventListener('pointercancel', () => lookTouch = null);
+
+$('shoot').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  shooting = true;
+  e.target.setPointerCapture(e.pointerId);
+});
+
+for (let ev of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  $('shoot').addEventListener(ev, () => shooting = false);
+}
+
+$('reload').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  reload();
+});
+
+$('jump').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (height <= 1.71) vy = 6;
+});
+
+$('switch').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  switchWeapon();
+});
+
+$('invite').onclick = async () => {
+  let u = new URL(location.href);
+  u.search = '';
+  u.searchParams.set('room', $('invite').dataset.code);
+
+  try {
+    await navigator.clipboard.writeText(u.href);
+    feed('EINLADUNGSLINK KOPIERT');
+  } catch {
+    window.prompt('Einladungslink kopieren:', u.href);
+  }
+};
+
+const inviteCode = new URLSearchParams(location.search).get('room');
+
+if (inviteCode && /^[a-f0-9]{6}$/i.test(inviteCode)) {
+  document.querySelector('[data-mode="online"]').click();
+  $('join').click();
+  $('code').value = inviteCode.toUpperCase();
+}
