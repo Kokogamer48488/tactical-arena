@@ -302,4 +302,168 @@ function shoot() {
   camera.getWorldDirection(dir);
   let origin = camera.position.clone();
   let ray = new THREE.Raycaster(origin, dir, 0, 45);
-  let targets = 
+    let targets = entities.filter(e => e.team !== team && !e.dead);
+  let hits = ray.intersectObjects(targets.map(e => e.mesh), true);
+
+  if (hits.length) {
+    let target = targets.find(e => {
+      let o = hits[0].object;
+      while (o && o !== e.mesh) o = o.parent;
+      return !!o;
+    });
+
+    if (target) {
+      let distance = hits[0].distance;
+      let obstruction = ray.intersectObjects(
+        scene.children.filter(o => o.isMesh && o.geometry.type === 'BoxGeometry'),
+        false
+      ).some(h => h.distance < distance);
+
+      if (!obstruction) {
+        target.hp -= w.damage;
+        hit();
+
+        if (target.hp <= 0) {
+          target.dead = true;
+          target.mesh.visible = false;
+          target.respawn = now + 3000;
+          scores[team]++;
+          feed('DU → ' + target.name);
+          updateHUD();
+        }
+      }
+    }
+  }
+}
+
+function reload() {
+  if (reloading || ammo === weapons[weapon].max || deadUntil) return;
+  reloading = true;
+  showMessage('NACHLADEN');
+
+  setTimeout(() => {
+    if (!playing) return;
+    reloading = false;
+    ammo = weapons[weapon].max;
+
+    if (mode === 'online' && socket?.readyState === 1) {
+      socket.send(JSON.stringify({type: 'reload'}));
+    }
+
+    showMessage('');
+    updateHUD();
+  }, 900);
+}
+
+function switchWeapon() {
+  if (mode === 'online') {
+    feed('ONLINE: PULSE RIFLE');
+    return;
+  }
+
+  if (deadUntil || reloading) return;
+  weapon = 1 - weapon;
+  ammo = weapons[weapon].max;
+  updateHUD();
+}
+
+function bots(dt, now) {
+  for (let e of entities) {
+    if (e.dead) {
+      if (now > e.respawn) {
+        e.dead = false;
+        e.hp = 100;
+        e.x = e.team === 0 ? -12 : 12;
+        e.z = (Math.random() - .5) * 18;
+        e.mesh.visible = true;
+      }
+      continue;
+    }
+
+    if (now > e.change) {
+      e.change = now + 1000 + Math.random() * 2200;
+      e.dir = Math.random() * Math.PI * 2;
+    }
+
+    let speed = 2 * dt;
+    let nx = e.x + Math.sin(e.dir) * speed;
+    let nz = e.z + Math.cos(e.dir) * speed;
+
+    if (!blocked(nx, nz)) {
+      e.x = nx;
+      e.z = nz;
+    } else {
+      e.dir += 1.8;
+    }
+
+    e.mesh.position.set(e.x, 0, e.z);
+    e.mesh.rotation.y = e.dir;
+
+    let dist = Math.hypot(x - e.x, z - e.z);
+
+    if (e.team !== team && mode !== 'training' && !deadUntil &&
+        dist < 16 && now > e.attack) {
+      e.attack = now + 800 + Math.random() * 1000;
+
+      let from = new THREE.Vector3(e.x, 1.5, e.z);
+      let direction = new THREE.Vector3(
+        x - e.x, height - 1.5, z - e.z
+      ).normalize();
+
+      tracer(from, direction, 0xff526c);
+
+      if (Math.random() < .45) {
+        health -= 10;
+
+        if (health <= 0) {
+          health = 0;
+          deadUntil = now + 3000;
+          scores[e.team]++;
+          feed(e.name + ' → DU');
+          showMessage('RESPAWN IN 3 SEKUNDEN');
+        }
+
+        updateHUD();
+      }
+    }
+  }
+}
+
+function startLocal() {
+  team = 0;
+  reset();
+  buildWorld();
+
+  if (mode === 'training') {
+    for (let i = 0; i < 4; i++) {
+      makeEntity('bot' + i, 1, 'ZIEL ' + (i + 1));
+    }
+  } else {
+    for (let i = 0; i < 3; i++) {
+      makeEntity('red' + i, 1, 'BOT ROT ' + (i + 1));
+    }
+    for (let i = 0; i < 2; i++) {
+      makeEntity('blue' + i, 0, 'BOT BLAU ' + (i + 1));
+    }
+  }
+
+  begin();
+}
+
+function begin() {
+  playing = true;
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+
+  $('hudMode').textContent =
+    mode === 'training' ? 'TRAINING' :
+    mode === 'online' ? 'ONLINE TDM' : 'TEAM DEATHMATCH';
+
+  $('mapDisplay').textContent =
+    map === 'OUTPOST' ? 'OUTPOST 07' : 'NEXUS CORE';
+
+  $('roomDisplay').textContent = '';
+  $('invite').classList.toggle('hidden', mode !== 'online');
+  showMessage('');
+  clock.getDelta();
+}
