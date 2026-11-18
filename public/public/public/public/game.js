@@ -923,3 +923,63 @@ function animateCharacters(time) {
 }
 
 requestAnimationFrame(animateCharacters);
+// Neue Waffen und kleinere Magazine im Einzelspieler
+weapons[0].max = 24;
+weapons[1].max = 8;
+
+weapons.push(
+  {name: 'SCOUT CARBINE', max: 12, interval: 240, damage: 50},
+  {name: 'BURST SMG', max: 20, interval: 80, damage: 22}
+);
+
+// Beim Start die passende Magazingröße setzen.
+// Online bleibt zunächst bei 60, bis der Server angepasst ist.
+const originalReset = reset;
+reset = function () {
+  weapons[0].max = mode === 'online' ? 60 : 24;
+  originalReset();
+  ammo = weapons[0].max;
+  updateHUD();
+};
+
+// Durch alle Waffen wechseln
+switchWeapon = function () {
+  if (mode === 'online') {
+    feed('ONLINE: PULSE RIFLE');
+    return;
+  }
+
+  if (deadUntil || reloading) return;
+
+  weapon = (weapon + 1) % weapons.length;
+  ammo = weapons[weapon].max;
+  updateHUD();
+  feed(weapons[weapon].name);
+};
+
+// Zusätzliche Details für die Rüstung
+const originalMakeEntity = makeEntity;
+makeEntity = function (id, teamColor, name) {
+  const character = originalMakeEntity(id, teamColor, name);
+  const armor = teamColor === 0 ? mats.blue : mats.red;
+
+  function addDetail(width, height, depth, material, x, y, z) {
+    const detail = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, depth),
+      material
+    );
+    detail.position.set(x, y, z);
+    character.mesh.add(detail);
+  }
+
+  // Brustpanzer, Gürtel und Rückenmodul
+  addDetail(.46, .30, .09, mats.dark, 0, 1.42, -.29);
+  addDetail(.34, .05, .10, armor, 0, 1.45, -.35);
+  addDetail(.58, .10, .38, mats.white, 0, .91, 0);
+  addDetail(.38, .52, .20, mats.dark, 0, 1.43, .28);
+
+  // Zusätzliche Helmpanzerung
+  addDetail(.50, .08, .38, armor, 0, 2.21, 0);
+
+  return character;
+};
