@@ -572,8 +572,11 @@ async function startOnline() {
         updateHUD();
       }
 
-      if (m.type === 'ammo') {
-        ammo = m.ammo;
+            if (m.type === 'ammo') {
+        if (Number.isInteger(m.weapon) && magazines[m.weapon] !== undefined) {
+          magazines[m.weapon] = m.ammo;
+          if (weapon === m.weapon) ammo = m.ammo;
+        }
         updateHUD();
       }
 
