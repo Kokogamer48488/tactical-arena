@@ -1,3 +1,4 @@
+/*
 const express=require('express'),http=require('http'),{WebSocketServer}=require('ws'),crypto=require('crypto');
 const app=express(),server=http.createServer(app),wss=new WebSocketServer({server,path:'/ws'});app.use(express.json());app.use('/three',express.static(require('path').join(__dirname,'node_modules/three/build')));app.use(express.static('public'));
 const rooms=new Map(),tokens=new Map();const id=()=>crypto.randomBytes(12).toString('hex');
@@ -20,6 +21,7 @@ app.get('/style.css', (req, res) =>
 app.get('/game.js', (req, res) =>
   res.sendFile(__dirname + '/public/public/public/public/game.js')
 );
+*/
 const express = require('express');
 const http = require('http');
 const {WebSocketServer} = require('ws');
