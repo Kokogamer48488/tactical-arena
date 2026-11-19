@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 
 let effects = [];
 let scene, camera, renderer;
+let viewGun = null;
 let clock = new THREE.Clock();
 let playing = false, mode = 'bots', onlineAction = 'create';
 let socket = null, myId = null, team = 0, map = 'OUTPOST';
@@ -133,12 +134,73 @@ function cover(X, Z, w, d, h = 2.5) {
   box(w + .03, .06, d + .03, mats.glow, X, h - .06, Z);
   walls.push({x: X, z: Z, w: w / 2 + .45, d: d / 2 + .45});
 }
+function makeViewWeapon(index) {
+  const g = new THREE.Group();
+  const part = (w, h, d, mat, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    g.add(m);
+    return m;
+  };
+  const tube = (radius, length, mat, x, y, z) => {
+    const m = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius, radius, length, 10), mat
+    );
+    m.rotation.x = Math.PI / 2;
+    m.position.set(x, y, z);
+    g.add(m);
+  };
 
-function buildWorld() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x080f1a);
-  scene.fog = new THREE.Fog(0x080f1a, 26, 75);
+  if (index === 0) {
+    // Sniper: langer Lauf und Zielfernrohr.
+    part(.25, .23, .70, mats.dark, .34, -.31, -.69);
+    part(.16, .17, .30, mats.dark, .34, -.31, -.22);
+    part(.075, .075, .96, mats.white, .34, -.26, -1.48);
+    part(.13, .11, .14, mats.glow, .34, -.26, -1.99);
+    part(.15, .07, .25, mats.blue, .34, -.17, -.82);
+    part(.12, .22, .16, mats.dark, .34, -.49, -.53);
+    tube(.065, .38, mats.dark, .34, -.07, -.91);
+    tube(.072, .035, mats.glow, .34, -.07, -1.12);
+  } else if (index === 1) {
+    // Maschinengewehr: breiter Korpus, Magazin und Kühlrippen.
+    part(.28, .24, .60, mats.dark, .34, -.31, -.65);
+    part(.16, .17, .28, mats.blue, .34, -.31, -.24);
+    part(.25, .15, .34, mats.dark, .34, -.25, -.98);
+    part(.07, .07, .50, mats.white, .34, -.27, -1.38);
+    part(.12, .10, .12, mats.glow, .34, -.27, -1.68);
+    part(.15, .32, .20, mats.dark, .34, -.52, -.64);
+    part(.11, .21, .14, mats.dark, .34, -.49, -.43);
+    part(.16, .055, .48, mats.blue, .34, -.16, -.83);
+    for (let i = 0; i < 3; i++) {
+      part(.025, .045, .09, mats.glow, .49, -.27, -.78 - i * .13);
+    }
+  } else {
+    // Shotgun: kurzer Korpus und zwei parallele Läufe.
+    part(.28, .24, .44, mats.dark, .34, -.32, -.55);
+    part(.17, .17, .28, mats.dark, .34, -.32, -.22);
+    part(.25, .14, .25, mats.blue, .34, -.39, -.88);
+    part(.12, .22, .14, mats.dark, .34, -.50, -.42);
+    part(.18, .04, .30, mats.glow, .34, -.18, -.70);
+    for (const bx of [.29, .40]) {
+      part(.065, .065, .62, mats.white, bx, -.25, -1.02);
+      part(.09, .085, .10, mats.glow, bx, -.25, -1.38);
+    }
+    for (let i = 0; i < 3; i++) {
+      part(.04, .05, .08, mats.red, .48, -.40, -.72 - i * .12);
+    }
+  }
+  return g;
+}
 
+function clearViewWeapon() {
+  if (!viewGun) return;
+  if (camera) camera.remove(viewGun);
+  viewGun.traverse(part => {
+    if (part.isMesh) part.geometry.dispose();
+  });
+  viewGun = null;
+}
+  setViewWeapon(weapon);
   camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, .1, 100);
   camera.rotation.order = 'YXZ';
 
