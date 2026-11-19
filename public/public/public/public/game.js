@@ -18,23 +18,110 @@ const weapons = [
   {name: 'PULSE RIFLE', max: 60, interval: 100, damage: 34},
   {name: 'ARC BLASTER', max: 20, interval: 350, damage: 60}
 ];
+function makeRobloxTexture(style, repeatX = 1, repeatY = 1) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f1f5f7';
+  ctx.fillRect(0, 0, 128, 128);
+
+  function stud(x, y) {
+    ctx.fillStyle = '#aab8c0';
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x - .7, y - .7, .7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (style === 'floor') {
+    for (let y = 0; y < 128; y += 32) {
+      for (let x = 0; x < 128; x += 32) {
+        ctx.fillStyle = ((x + y) / 32) % 2 ? '#e7edf0' : '#f8fafb';
+        ctx.fillRect(x + 1, y + 1, 30, 30);
+        ctx.strokeStyle = '#b9c6cd';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 1.5, y + 1.5, 29, 29);
+        stud(x + 5, y + 5);
+        stud(x + 27, y + 5);
+        stud(x + 5, y + 27);
+        stud(x + 27, y + 27);
+      }
+    }
+  } else if (style === 'wall') {
+    for (let y = 0; y < 128; y += 64) {
+      for (let x = 0; x < 128; x += 64) {
+        ctx.fillStyle = '#f7f9fa';
+        ctx.fillRect(x + 3, y + 3, 58, 58);
+        ctx.strokeStyle = '#aab9c1';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x + 4.5, y + 4.5, 55, 55);
+        ctx.fillStyle = '#e1e9ed';
+        ctx.fillRect(x + 10, y + 10, 44, 44);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + 12, y + 12, 40, 5);
+        stud(x + 8, y + 8);
+        stud(x + 56, y + 8);
+        stud(x + 8, y + 56);
+        stud(x + 56, y + 56);
+      }
+    }
+  } else {
+    ctx.fillStyle = '#f7f9fa';
+    ctx.fillRect(5, 5, 118, 118);
+    ctx.strokeStyle = '#aebdc5';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(7, 7, 114, 114);
+    ctx.fillStyle = '#e4ebef';
+    ctx.fillRect(14, 14, 100, 100);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(17, 17, 94, 12);
+    ctx.fillStyle = '#d0dce2';
+    ctx.fillRect(17, 99, 94, 12);
+    stud(12, 12);
+    stud(116, 12);
+    stud(12, 116);
+    stud(116, 116);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.anisotropy = 2;
+  return texture;
+}
 
 const mats = {
-  floor: new THREE.MeshStandardMaterial({color: 0x111d29, roughness: .85, metalness: .35}),
-  wall: new THREE.MeshStandardMaterial({color: 0x263b4b, roughness: .65, metalness: .35}),
-  dark: new THREE.MeshStandardMaterial({color: 0x182936, metalness: .5, roughness: .5}),
-  blue: new THREE.MeshStandardMaterial({color: 0x147bba, emissive: 0x075887, emissiveIntensity: .7}),
-  red: new THREE.MeshStandardMaterial({color: 0xa62b43, emissive: 0x8c142b, emissiveIntensity: .7}),
-  glow: new THREE.MeshBasicMaterial({color: 0x3ebcff}),
-  white: new THREE.MeshStandardMaterial({color: 0xa5bac7, metalness: .7, roughness: .35})
+  floor: new THREE.MeshStandardMaterial({
+    color: 0x8299a8, map: makeRobloxTexture('floor', 8, 8),
+    roughness: .62, metalness: .02
+  }),
+  wall: new THREE.MeshStandardMaterial({
+    color: 0x8da7b6, map: makeRobloxTexture('wall', 2, 2),
+    roughness: .42, metalness: .03
+  }),
+  dark: new THREE.MeshStandardMaterial({
+    color: 0x243747, map: makeRobloxTexture('wall'),
+    roughness: .38, metalness: .02
+  }),
+  blue: new THREE.MeshStandardMaterial({
+    color: 0x2187cf, map: makeRobloxTexture('armor'),
+    roughness: .32, metalness: .01
+  }),
+  red: new THREE.MeshStandardMaterial({
+    color: 0xc84056, map: makeRobloxTexture('armor'),
+    roughness: .32, metalness: .01
+  }),
+  glow: new THREE.MeshBasicMaterial({color: 0x58cfff}),
+  white: new THREE.MeshStandardMaterial({
+    color: 0xe6eef2, map: makeRobloxTexture('armor'),
+    roughness: .34, metalness: .01
+  })
 };
-
-function box(w, h, d, mat, X, Y, Z) {
-  let m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  m.position.set(X, Y, Z);
-  scene.add(m);
-  return m;
-}
 
 function cover(X, Z, w, d, h = 2.5) {
   box(w, h, d, mats.wall, X, h / 2, Z);
