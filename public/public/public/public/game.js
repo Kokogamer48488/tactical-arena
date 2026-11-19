@@ -299,15 +299,9 @@ function shoot() {
     return;
   }
 
-  ammo--;
+    ammo--;
   magazines[weapon] = ammo;
   updateHUD();
-  );
-
-  if (mode === 'online') {
-    if (socket?.readyState === 1) socket.send(JSON.stringify({type: 'fire'}));
-    return;
-  }
 
   let dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
