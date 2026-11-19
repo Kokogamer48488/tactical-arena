@@ -252,9 +252,9 @@ function respawn() {
   updateHUD();
 }
 
-function tracer(from, direction, color = 0x70d8ff) {
-  let end = from.clone().addScaledVector(direction, 30);
-  let ray = new THREE.Raycaster(from, direction, 0, 30);
+function tracer(from, direction, color = 0x70d8ff, range = 30) {
+  let end = from.clone().addScaledVector(direction, range);
+  let ray = new THREE.Raycaster(from, direction, 0, range);
 
   let blocks = ray.intersectObjects(
     scene.children.filter(o => o.isMesh && o.geometry.type === 'BoxGeometry'),
@@ -282,15 +282,26 @@ function shoot() {
       now - lastShot < w.interval || ammo <= 0) return;
 
   lastShot = now;
-  ammo--;
-  updateHUD();
 
   let shotDirection = new THREE.Vector3();
   camera.getWorldDirection(shotDirection);
   tracer(
     camera.position.clone().add(new THREE.Vector3(0, -.12, 0)),
     shotDirection,
-    weapon === 0 ? 0x72ddff : 0xffa65a
+    weapon === 2 ? 0xffa65a : 0x72ddff,
+    w.range
+  );
+
+  if (mode === 'online') {
+    if (socket?.readyState === 1) {
+      socket.send(JSON.stringify({type: 'fire', weapon}));
+    }
+    return;
+  }
+
+  ammo--;
+  magazines[weapon] = ammo;
+  updateHUD();
   );
 
   if (mode === 'online') {
@@ -301,7 +312,7 @@ function shoot() {
   let dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
   let origin = camera.position.clone();
-  let ray = new THREE.Raycaster(origin, dir, 0, 45);
+  let ray = new THREE.Raycaster(origin, dir, 0, w.range);
     let targets = entities.filter(e => e.team !== team && !e.dead);
   let hits = ray.intersectObjects(targets.map(e => e.mesh), true);
 
