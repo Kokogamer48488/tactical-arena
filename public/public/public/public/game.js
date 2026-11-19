@@ -122,7 +122,12 @@ const mats = {
     roughness: .34, metalness: .01
   })
 };
-
+function box(w, h, d, mat, X, Y, Z) {
+  let m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(X, Y, Z);
+  scene.add(m);
+  return m;
+}
 function cover(X, Z, w, d, h = 2.5) {
   box(w, h, d, mats.wall, X, h / 2, Z);
   box(w + .03, .06, d + .03, mats.glow, X, h - .06, Z);
