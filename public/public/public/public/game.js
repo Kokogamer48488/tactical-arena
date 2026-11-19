@@ -983,3 +983,69 @@ makeEntity = function (id, teamColor, name) {
 
   return character;
 };
+// Die drei neuen Waffen
+weapons.splice(0, weapons.length,
+  {name:'SNIPER', max:6, damage:20, range:45, interval:700},
+  {name:'MASCHINENGEWEHR', max:30, damage:10, range:25, interval:110},
+  {name:'SHOTGUN', max:2, damage:50, range:10, interval:650}
+);
+
+let magazines = weapons.map(w => w.max);
+
+// Beim Start und Respawn Magazine zurücksetzen
+reset = function () {
+  originalReset();
+  magazines = weapons.map(w => w.max);
+  weapon = 0;
+  ammo = magazines[0];
+  reloading = false;
+  updateHUD();
+};
+
+respawn = function () {
+  x = team === 0 ? -12 : 12;
+  z = (Math.random() - .5) * 12;
+  health = 100;
+  magazines = weapons.map(w => w.max);
+  ammo = magazines[weapon];
+  deadUntil = 0;
+  showMessage('');
+  updateHUD();
+};
+
+// Waffen wechseln
+switchWeapon = function () {
+  if (deadUntil || reloading) return;
+  magazines[weapon] = ammo;
+  weapon = (weapon + 1) % weapons.length;
+  ammo = magazines[weapon];
+  updateHUD();
+  feed(weapons[weapon].name);
+};
+
+// Nachladen
+reload = function () {
+  if (reloading || deadUntil || ammo === weapons[weapon].max) return;
+
+  reloading = true;
+  const selected = weapon;
+  showMessage('NACHLADEN');
+
+  setTimeout(() => {
+    if (!playing) {
+      reloading = false;
+      return;
+    }
+
+    magazines[selected] = weapons[selected].max;
+    if (weapon === selected) ammo = magazines[selected];
+
+    if (mode === 'online' && socket?.readyState === 1) {
+      socket.send(JSON.stringify({type:'reload', weapon:selected}));
+    }
+
+    reloading = false;
+    showMessage('');
+    updateHUD();
+  }, 900);
+};
