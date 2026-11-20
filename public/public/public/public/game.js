@@ -191,7 +191,6 @@ function makeViewWeapon(index) {
   }
   return g;
 }
-
 function clearViewWeapon() {
   if (!viewGun) return;
   if (camera) camera.remove(viewGun);
@@ -200,7 +199,18 @@ function clearViewWeapon() {
   });
   viewGun = null;
 }
-  setViewWeapon(weapon);
+
+function setViewWeapon(index) {
+  clearViewWeapon();
+  viewGun = makeViewWeapon(index);
+  camera.add(viewGun);
+}
+
+function buildWorld() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x080f1a);
+  scene.fog = new THREE.Fog(0x080f1a, 26, 75);
+
   camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, .1, 100);
   camera.rotation.order = 'YXZ';
 
