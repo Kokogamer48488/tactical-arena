@@ -205,7 +205,52 @@ function setViewWeapon(index) {
   viewGun = makeViewWeapon(index);
   camera.add(viewGun);
 }
+function makeEntity(id, t, name) {
+  let g = new THREE.Group();
+  let armor = t === 0 ? mats.blue : mats.red;
 
+  const mesh = (geo, mat, X, Y, Z) => {
+    let m = new THREE.Mesh(geo, mat);
+    m.position.set(X, Y, Z);
+    g.add(m);
+    return m;
+  };
+
+  mesh(new THREE.CapsuleGeometry(.30, .52, 4, 8), mats.dark, 0, 1.27, 0);
+  mesh(new THREE.BoxGeometry(.68, .60, .33), armor, 0, 1.45, -.10);
+  mesh(new THREE.BoxGeometry(.42, .25, .36), mats.white, 0, 1.70, -.08);
+  mesh(new THREE.CapsuleGeometry(.27, .12, 4, 10), mats.dark, 0, 2.01, 0);
+  mesh(new THREE.BoxGeometry(.42, .13, .10), t === 0 ? mats.glow : mats.red, 0, 2.03, -.25);
+  mesh(new THREE.BoxGeometry(.45, .12, .14), armor, 0, 2.24, 0);
+  mesh(new THREE.BoxGeometry(.56, .22, .34), mats.dark, 0, .91, 0);
+
+  for (let side of [-1, 1]) {
+    let shoulder = mesh(new THREE.SphereGeometry(.20, 8, 6), armor, side * .48, 1.65, 0);
+    shoulder.scale.set(1.2, .8, 1);
+    mesh(new THREE.CapsuleGeometry(.12, .36, 3, 6), mats.dark, side * .49, 1.32, 0);
+    mesh(new THREE.CapsuleGeometry(.11, .33, 3, 6), armor, side * .50, .98, -.04);
+    mesh(new THREE.SphereGeometry(.10, 8, 6), mats.white, side * .50, .76, -.04);
+    mesh(new THREE.CapsuleGeometry(.15, .38, 3, 6), armor, side * .22, .65, 0);
+    mesh(new THREE.CapsuleGeometry(.12, .30, 3, 6), mats.dark, side * .22, .30, 0);
+    mesh(new THREE.BoxGeometry(.27, .13, .42), mats.white, side * .22, .10, -.08);
+  }
+
+  mesh(new THREE.BoxGeometry(.55, .10, .13), mats.dark, .32, 1.25, -.42);
+  mesh(new THREE.BoxGeometry(.10, .09, .52), mats.white, .48, 1.26, -.56);
+
+  scene.add(g);
+
+  let e = {
+    id, team: t, name, mesh: g,
+    x: t === 0 ? -12 : 12,
+    z: (Math.random() - .5) * 20,
+    hp: 100, dead: false, respawn: 0, attack: 0,
+    dir: Math.random() * 6.28, change: 0
+  };
+
+  entities.push(e);
+  return e;
+}
 function buildWorld() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x080f1a);
