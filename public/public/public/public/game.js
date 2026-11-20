@@ -267,23 +267,8 @@ function buildWorld() {
     box(1, 9, 1, mats.dark, i, 4.5, 25);
   }
 
-  let gun = new THREE.Group();
-
-  let body = new THREE.Mesh(new THREE.BoxGeometry(.25, .25, .75), mats.dark);
-  body.position.set(.34, -.3, -.65);
-  gun.add(body);
-
-  let barrel = new THREE.Mesh(new THREE.BoxGeometry(.09, .09, .45), mats.white);
-  barrel.position.set(.34, -.25, -1.15);
-  gun.add(barrel);
-
-  let strip = new THREE.Mesh(new THREE.BoxGeometry(.15, .025, .35), mats.glow);
-  strip.position.set(.34, -.165, -.62);
-  gun.add(strip);
-
-  camera.add(gun);
+  setViewWeapon(weapon);
   scene.add(camera);
-}
 
 function makeEntity(id, t, name) {
   let g = new THREE.Group();
