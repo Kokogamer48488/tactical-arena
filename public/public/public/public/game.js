@@ -338,7 +338,7 @@ function clearWorld() {
     e.mesh.material.dispose();
   }
   effects = [];
-
+  clearViewWeapon();
   if (renderer) {
     renderer.dispose();
     renderer.domElement.remove();
