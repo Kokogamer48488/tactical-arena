@@ -269,21 +269,6 @@ function buildWorld() {
 
   setViewWeapon(weapon);
   scene.add(camera);
-
-function makeEntity(id, t, name) {
-  let g = new THREE.Group();
-  let armor = t === 0 ? mats.blue : mats.red;
-
-  const mesh = (geo, mat, X, Y, Z) => {
-    let m = new THREE.Mesh(geo, mat);
-    m.position.set(X, Y, Z);
-    g.add(m);
-    return m;
-  };
-
-  mesh(new THREE.CapsuleGeometry(.30, .52, 4, 8), mats.dark, 0, 1.27, 0);
-  mesh(new THREE.BoxGeometry(.68, .60, .33), armor, 0, 1.45, -.10);
-  mesh(new THREE.BoxGeometry(.42, .25, .36), mats.white, 0, 1.70, -.08);
   mesh(new THREE.CapsuleGeometry(.27, .12, 4, 10), mats.dark, 0, 2.01, 0);
   mesh(new THREE.BoxGeometry(.42, .13, .10), t === 0 ? mats.glow : mats.red, 0, 2.03, -.25);
   mesh(new THREE.BoxGeometry(.45, .12, .14), armor, 0, 2.24, 0);
