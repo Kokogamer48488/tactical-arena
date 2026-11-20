@@ -1191,6 +1191,7 @@ switchWeapon = function () {
   magazines[weapon] = ammo;
   weapon = (weapon + 1) % weapons.length;
   ammo = magazines[weapon];
+    setViewWeapon(weapon);
   updateHUD();
   feed(weapons[weapon].name);
 };
